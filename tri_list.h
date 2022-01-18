@@ -26,42 +26,12 @@ private:
     tri_container elems;
     std::ranges::ref_view<tri_container> modified_elems;
 
-    // template <typename T>
-    // class Iterator
-    // {
-    // public:
-    //     using iterator_category = std::input_iterator_tag ;
-    //     using difference_type = std::ptrdiff_t;
-    //     using value_type = T;
-    //     Iterator();                              // default-initializable
-    //     // bool operator==(const Sentinel &) const; // equality with sentinel
-    //     T &operator*() const
-    //     {
-    //         return std::get<T>(*ptr);
-    //     }
-    //     Iterator &operator++() // pre-incrementable
-    //     {                      /*do stuff...*/
-    //         return *this;
-    //     }
-    //     void operator++(int) // post-incrementable
-    //     {
-    //         ++*this;
-    //     }
-
-    //     // ...same as the previous one, except:
-    //     bool operator==(const Iterator &) const; // equality with iterators
-    //     Iterator operator++(int)                 // post-incrementable, returns prev value
-    //     {
-    //         auto temp = *this;
-    //         ++*this;
-    //         return temp;
-    //     }
-
-    // private:
-    //     typename tri_container::iterator ptr; 
-    // };
-
 public:
+
+    tri_list()
+    {
+        modified_elems = std::views::all(elems);
+    }
 
     template <typename T>
     requires one_of_tri<T, T1, T2, T3>
@@ -74,6 +44,15 @@ public:
     requires one_of_tri<T, T1, T2, T3>
     void modify_only(F m = F{})
     {
+        auto wrapped_modifier = [&](tri_type elem)
+        {
+            if constexpr(std::holds_alternative<T>(elem))
+                return visit(m, elem);
+            else
+                return elem;
+        };
+
+        modified_elems = elems | std::views::transform(wrapped_modifier);
     }
 
     template <typename T>
@@ -86,6 +65,12 @@ public:
     requires one_of_tri<T, T1, T2, T3>
     auto range_over()
     {
+        auto filter_modifier = [&](tri_type elem)
+        {
+            return std::holds_alternative<T>(elem);
+        };
+
+        return modified_elems | std::views::filter(filter_modifier) | std::views::transform([](tri_type elem){return std::get<T>(elem);});
     }
 };
 
