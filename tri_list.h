@@ -6,6 +6,7 @@
 #include <variant>
 #include <list>
 #include <ranges>
+#include <functional>
 
 namespace
 {
@@ -19,18 +20,16 @@ template <typename T1, typename T2, typename T3>
 class tri_list
 {
 private:
-
     using tri_type = std::variant<T1, T2, T3>;
     using tri_container = std::list<tri_type>;
 
     tri_container elems;
-    std::ranges::ref_view<tri_container> modified_elems;
+    std::function<tri_type(tri_type)> modifiers;
 
 public:
-
     tri_list()
     {
-        modified_elems = std::views::all(elems);
+        modifiers = std::identity();
     }
 
     template <typename T>
@@ -44,33 +43,40 @@ public:
     requires one_of_tri<T, T1, T2, T3>
     void modify_only(F m = F{})
     {
-        auto wrapped_modifier = [&](tri_type elem)
+        modifiers = [*this, m](tri_type elem) -> tri_type
         {
-            if constexpr(std::holds_alternative<T>(elem))
-                return visit(m, elem);
+            elem = modifiers(elem);
+            if (std::holds_alternative<T>(elem))
+                return tri_type(std::invoke(m, std::get<T>(elem)));
             else
                 return elem;
         };
-
-        modified_elems = elems | std::views::transform(wrapped_modifier);
     }
 
     template <typename T>
     requires one_of_tri<T, T1, T2, T3>
     void reset()
     {
+        modifiers = std::identity();
     }
 
     template <typename T>
     requires one_of_tri<T, T1, T2, T3>
     auto range_over()
     {
-        auto filter_modifier = [&](tri_type elem)
+        auto filter_modifier = [](const tri_type &elem)
         {
             return std::holds_alternative<T>(elem);
         };
 
-        return modified_elems | std::views::filter(filter_modifier) | std::views::transform([](tri_type elem){return std::get<T>(elem);});
+        auto get_value = [](const tri_type &elem)
+        {
+            return std::get<T>(elem);
+        };
+
+        return elems | std::views::transform(modifiers)
+                     | std::views::filter(filter_modifier) 
+                     | std::views::transform(get_value);
     }
 };
 
