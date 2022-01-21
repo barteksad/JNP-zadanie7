@@ -9,6 +9,7 @@
 #include <functional>
 #include <iterator>
 #include <cstddef>
+#include <initializer_list>
 
 namespace
 {
@@ -35,23 +36,23 @@ private:
     struct Iterator 
     {
         private:
-
-            typename tri_container::const_iterator m_ptr;
+            using pointer = typename tri_container::iterator;
+            pointer m_ptr;
             tri_modifiers_f m_modifiers;
 
         public:
             using iterator_category = std::forward_iterator_tag;
             using difference_type   = std::ptrdiff_t;
             using value_type        = tri_type_t;
-            using pointer           = const value_type*;
-            using reference         = const value_type;
+            // using pointer           = value_type*;
+            // using reference         = value_type;
 
+            Iterator();
             Iterator(decltype(m_ptr) _ptr, tri_modifiers_f _modifiers) : m_ptr(_ptr), m_modifiers(_modifiers) {}
 
-            reference operator*() const 
+            value_type operator*()
             {
-                auto value = m_modifiers(*m_ptr);
-                return value; 
+                return m_modifiers(*m_ptr);  
             }
 
             pointer operator->() { return m_ptr; }
@@ -68,6 +69,12 @@ private:
 public:
 
     tri_list()
+    {
+        modifiers = std::identity();
+    }
+
+    tri_list(std::initializer_list<tri_type_t> _elems)
+        : elems(_elems)
     {
         modifiers = std::identity();
     }
