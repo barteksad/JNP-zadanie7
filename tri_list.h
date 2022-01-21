@@ -18,6 +18,9 @@ namespace
 
 }; // namespace
 
+template <typename T>
+static inline constinit auto identity = [](T x) {return x; };
+
 template <typename T1, typename T2, typename T3>
 class tri_list
 {
