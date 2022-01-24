@@ -33,34 +33,31 @@ private:
     tri_container elems;
     tri_modifiers_f modifiers;
 
-    struct Iterator 
+    class Iterator
     {
-        public:
-            using iterator_category = std::forward_iterator_tag;
-            using difference_type   = std::ptrdiff_t;
-            using value_type        = tri_type_t;
-            using pointer           = tri_container::iterator;
-            using reference         = value_type;
-
-            Iterator();
-            Iterator(pointer _ptr, tri_modifiers_f _modifiers) : m_ptr(_ptr), m_modifiers(_modifiers) {}
-
-            value_type operator*()
-            {
-                return m_modifiers(*m_ptr);  
-            }
-
-            pointer operator->() { return m_ptr; }
-
-            Iterator& operator++() { m_ptr++; return *this; }  
-            Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
-            bool operator == (const Iterator&) const;
-            friend bool operator== (const Iterator& a, const Iterator& b) { return a.m_ptr == b.m_ptr; };
-            friend bool operator!= (const Iterator& a, const Iterator& b) { return a.m_ptr != b.m_ptr; };  
         private:
-            pointer m_ptr;
-            tri_modifiers_f m_modifiers;
+            tri_container::iterator ptr;
+            tri_modifiers_f modifiers;
+            tri_type_t tmp;
+    public:
+        using difference_type = std::ptrdiff_t;
+        using value_type = tri_type_t;
+        Iterator();                 // default-initializable
+        Iterator(tri_container::iterator _ptr, tri_modifiers_f _modifiers)
+        : ptr(_ptr), modifiers(_modifiers) {}
+        // bool operator == (const Sentinel&) const;   // equality with sentinel
+        value_type operator * ()     // dereferenceable
+        {
+            tmp = std::invoke(modifiers, *ptr);
+            return tmp;
+        }
+        Iterator& operator ++ ()    // pre-incrementable
+            { ++ptr; return *this; }
+        bool operator == (const Iterator&) const;   // equality with iterators
+        Iterator operator ++ (int)  // post-incrementable, returns prev value
+            { Iterator temp = *this; ++*this; return temp; }
     };
+
 
 public:
 
@@ -130,6 +127,14 @@ public:
 
     Iterator begin() { return Iterator(elems.begin(), modifiers); }
     Iterator end()   { return Iterator(elems.end(), modifiers); }
+    // friend Iterator begin(const tri_list & c)
+    // {
+    //     return c.begin();
+    // }
+    // friend Iterator end(const tri_list & c)
+    // {
+    //     return c.end();
+    // }
 };
 
 #endif // TRI_LIST_H
