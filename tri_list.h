@@ -35,20 +35,15 @@ private:
 
     struct Iterator 
     {
-        private:
-            using pointer = typename tri_container::iterator;
-            pointer m_ptr;
-            tri_modifiers_f m_modifiers;
-
         public:
             using iterator_category = std::forward_iterator_tag;
             using difference_type   = std::ptrdiff_t;
             using value_type        = tri_type_t;
-            // using pointer           = value_type*;
-            // using reference         = value_type;
+            using pointer           = tri_container::iterator;
+            using reference         = value_type;
 
             Iterator();
-            Iterator(decltype(m_ptr) _ptr, tri_modifiers_f _modifiers) : m_ptr(_ptr), m_modifiers(_modifiers) {}
+            Iterator(pointer _ptr, tri_modifiers_f _modifiers) : m_ptr(_ptr), m_modifiers(_modifiers) {}
 
             value_type operator*()
             {
@@ -58,12 +53,13 @@ private:
             pointer operator->() { return m_ptr; }
 
             Iterator& operator++() { m_ptr++; return *this; }  
-
             Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
-
+            bool operator == (const Iterator&) const;
             friend bool operator== (const Iterator& a, const Iterator& b) { return a.m_ptr == b.m_ptr; };
             friend bool operator!= (const Iterator& a, const Iterator& b) { return a.m_ptr != b.m_ptr; };  
-
+        private:
+            pointer m_ptr;
+            tri_modifiers_f m_modifiers;
     };
 
 public:
