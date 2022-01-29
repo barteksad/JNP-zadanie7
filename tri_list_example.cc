@@ -17,6 +17,12 @@ int main() {
     static_assert(is_tri_list_valid<tri_list<int, float, bool>, int, float, bool>);
     static_assert(modifier<decltype(identity<int>), int>);
 
+    // tri_list<int, float, bool> ll({1, 2, true, 4.f});
+    // std::ranges::copy(ll.range_over<bool>(), std::ostream_iterator<bool>(std::cout, ", "));
+    // std::ranges::copy(ll.range_over<int>(), std::ostream_iterator<int>(std::cout, ", "));
+    // std::ranges::copy(ll.range_over<float>(), std::ostream_iterator<float>(std::cout, ", "));
+
+
     tri_list<int, float, bool> l({1, 2, true, 4.f});
 
     l.modify_only<int>([] (int x) {return x * 2;});

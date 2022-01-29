@@ -20,10 +20,20 @@ namespace
 }; // namespace
 
 template <typename T>
-static inline constinit auto identity = [](T x) {return x; };
+static inline constinit auto identity = [](T x)
+{ return x; };
+
+template <typename T>
+static inline constinit auto compose = []<modifier<T> F1, modifier<T> F2>(F1 f, F2 g)
+{
+    return [=](T arg) mutable -> T
+    {
+        return std::invoke(f, std::invoke(g, arg));
+    };
+};
 
 template <typename T1, typename T2, typename T3>
-class tri_list
+class tri_list : public std::forward_iterator_tag
 {
 private:
     using tri_type_t = std::variant<T1, T2, T3>;
@@ -35,32 +45,47 @@ private:
 
     class Iterator
     {
-        private:
-            tri_container::iterator ptr;
-            tri_modifiers_f modifiers;
-            tri_type_t tmp;
+    private:
+        using iter_t = tri_container::const_iterator;
+        iter_t ptr;
+        tri_modifiers_f modifiers;
+
     public:
+        using iterator_category = std::forward_iterator_tag;
         using difference_type = std::ptrdiff_t;
         using value_type = tri_type_t;
-        Iterator();                 // default-initializable
-        Iterator(tri_container::iterator _ptr, tri_modifiers_f _modifiers)
-        : ptr(_ptr), modifiers(_modifiers) {}
-        // bool operator == (const Sentinel&) const;   // equality with sentinel
-        value_type operator * ()     // dereferenceable
+
+        Iterator();
+        Iterator(iter_t _ptr, tri_modifiers_f _modifiers)
+            : ptr(_ptr), modifiers(_modifiers) {}
+
+        value_type operator*() const
         {
-            tmp = std::invoke(modifiers, *ptr);
-            return tmp;
+            return invoke(modifiers, *ptr);
         }
-        Iterator& operator ++ ()    // pre-incrementable
-            { ++ptr; return *this; }
-        bool operator == (const Iterator&) const;   // equality with iterators
-        Iterator operator ++ (int)  // post-incrementable, returns prev value
-            { Iterator temp = *this; ++*this; return temp; }
+
+        value_type operator->() = delete;
+
+        Iterator &operator++()
+        {
+            ++ptr;
+            return *this;
+        }
+
+        Iterator operator++(int)
+        {
+            Iterator temp = *this;
+            ++*this;
+            return temp;
+        }
+
+        bool operator==(const Iterator &other) const
+        {
+            return this->ptr == other.ptr;
+        }
     };
 
-
 public:
-
     tri_list()
     {
         modifiers = std::identity();
@@ -83,11 +108,13 @@ public:
     requires one_of_tri<T, T1, T2, T3>
     void modify_only(F m = F{})
     {
-        modifiers = [*this, m](tri_type_t elem) -> tri_type_t
+        F m2(m);
+
+        modifiers = [=, *this](tri_type_t elem) mutable -> tri_type_t
         {
-            elem = modifiers(elem);
+            elem = std::invoke(modifiers, elem);
             if (std::holds_alternative<T>(elem))
-                return tri_type_t(std::invoke(m, std::get<T>(elem)));
+                return tri_type_t(std::invoke(m2, std::get<T>(elem)));
             else
                 return elem;
         };
@@ -108,7 +135,7 @@ public:
 
     template <typename T>
     requires one_of_tri<T, T1, T2, T3>
-    auto range_over()
+    auto range_over() const
     {
         auto filter_modifier = [](const tri_type_t &elem)
         {
@@ -120,21 +147,27 @@ public:
             return std::get<T>(elem);
         };
 
-        return elems | std::views::transform(modifiers)
-                     | std::views::filter(filter_modifier) 
-                     | std::views::transform(get_value);
+        return elems | std::views::transform(modifiers) | std::views::filter(filter_modifier) | std::views::transform(get_value);
     }
 
-    Iterator begin() { return Iterator(elems.begin(), modifiers); }
-    Iterator end()   { return Iterator(elems.end(), modifiers); }
-    // friend Iterator begin(const tri_list & c)
-    // {
-    //     return c.begin();
-    // }
-    // friend Iterator end(const tri_list & c)
-    // {
-    //     return c.end();
-    // }
+    Iterator begin() const
+    {
+        return Iterator(elems.begin(), modifiers);
+    }
+
+    Iterator end() const
+    {
+        return Iterator(elems.end(), modifiers);
+    }
+
+    inline Iterator begin(const tri_list &c) const
+    {
+        return c.begin();
+    }
+    inline Iterator end(const tri_list &c) const
+    {
+        return c.end();
+    }
 };
 
 #endif // TRI_LIST_H
